@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:hunttechelp/pages/homepage.dart';
-import 'package:hunttechelp/pages/startpage.dart';
+import 'package:hunttechelp/pages/home.dart';
+import 'package:hunttechelp/pages/loginpage.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
@@ -13,9 +13,9 @@ class MainPage extends StatelessWidget {
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            return Homepage();
+            return HomePage();
           } else {
-            return Startpage();
+            return LoginScreen();
           }
         },
       ),
