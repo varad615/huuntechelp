@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hunttechelp/pages/chat.dart';
+import 'package:hunttechelp/pages/profile.dart';
 import 'package:hunttechelp/pages/youtube.dart';
 
 class HomePage extends StatefulWidget {
@@ -109,7 +110,7 @@ class _HomePageState extends State<HomePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => YouTubePage()),
+                          MaterialPageRoute(builder: (context) => ProfileScreen()),
                         );
                       },
                       child: _buildCard(

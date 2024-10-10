@@ -51,7 +51,12 @@ class _YouTubePageState extends State<YouTubePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Videos'),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Video Tutorials',
+          style: TextStyle(color: Colors.black),
+        ),
+        iconTheme: IconThemeData(color: Colors.black),
       ),
       body: Column(
         children: [
@@ -60,8 +65,14 @@ class _YouTubePageState extends State<YouTubePage> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Search',
-                suffixIcon: Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey[200],
+                hintText: 'Search',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
@@ -70,26 +81,80 @@ class _YouTubePageState extends State<YouTubePage> {
               itemCount: _filteredVideos.length,
               itemBuilder: (context, index) {
                 var video = _filteredVideos[index];
-                var videoId = video['id']['videoId']; // Get the video ID
-                var videoTitle =
-                    video['snippet']['title']; // Get the video title
-                return ListTile(
-                  leading: Image.network(
-                      video['snippet']['thumbnails']['default']['url']),
-                  title: Text(videoTitle),
-                  subtitle: Text(video['snippet']['channelTitle']),
-                  onTap: () {
-                    // Navigate to the video player page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VideoPlayerPage(
-                          videoId: videoId,
-                          videoTitle: videoTitle,
+                var videoId = video['id']['videoId'];
+                var videoTitle = video['snippet']['title'];
+                var thumbnailUrl =
+                    video['snippet']['thumbnails']['high']['url'];
+                var channelTitle = video['snippet']['channelTitle'];
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0), // Added padding
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VideoPlayerPage(
+                            videoId: videoId,
+                            videoTitle: videoTitle,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Image.network(
+                                thumbnailUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                color: Colors.black.withOpacity(0.8),
+                                child: Text(
+                                  '10:15', // Static duration for now
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text(
+                            videoTitle,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text(
+                            channelTitle,
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),

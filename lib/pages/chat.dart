@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,8 @@ class _ChatState extends State<Chat> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String _userId = '';
   List<Map<String, dynamic>> _messages = [];
+  bool _isCallEnabled = false; // Initially disabled
+  String _phoneNumber = '';
 
   // Send the message with 'type: user'
   void _sendMessage(String text) {
@@ -65,12 +68,24 @@ class _ChatState extends State<Chat> {
         });
 
         // Sort the messages by timestamp (ascending order)
-        loadedMessages.sort((a, b) => b['time'].compareTo(a[
-            'time'])); // Change 'a' and 'b' to 'b' and 'a' to reverse the order
+        loadedMessages.sort((a, b) => b['time'].compareTo(a['time']));
 
-        // Update the state to rebuild the UI with the fetched and sorted messages
         setState(() {
           _messages = loadedMessages;
+        });
+      }
+    });
+  }
+
+  // Fetch phone number and availability from Firebase
+  void _fetchPhoneDetails() {
+    _database.child('phoneDetails').onValue.listen((event) {
+      final data = event.snapshot.value as Map<dynamic, dynamic>?;
+
+      if (data != null) {
+        setState(() {
+          _phoneNumber = data['phoneNumber'] ?? '';
+          _isCallEnabled = data['available'] ?? false;
         });
       }
     });
@@ -85,6 +100,7 @@ class _ChatState extends State<Chat> {
         _userId = user.uid;
       });
       _retrieveMessages();
+      _fetchPhoneDetails(); // Fetch phone details when the widget initializes
     }
   }
 
@@ -92,6 +108,30 @@ class _ChatState extends State<Chat> {
   String _formatTimestamp(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
     return "${date.hour}:${date.minute}";
+  }
+
+  // Make a phone call
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      throw 'Could not launch $phoneNumber';
+    }
+  }
+
+  void createTemporaryNumber() {
+    _database.child('phoneDetails').set({
+      'phoneNumber': '8691937999',
+      'available': true,
+    }).then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Temporary number created with availability')),
+      );
+    });
   }
 
   @override
@@ -111,17 +151,39 @@ class _ChatState extends State<Chat> {
             ),
             iconTheme: IconThemeData(color: Colors.white), // White back button
             actions: [
-              // Circular button with call icon
+              // Padding(
+              //   padding: const EdgeInsets.only(right: 16.0),
+              //   child: CircleAvatar(
+              //     backgroundColor: Colors.white,
+              //     child: IconButton(
+              //       icon: Icon(Icons.call, color: Color(0xFF51011A)), // Call icon
+              //       onPressed: createTemporaryNumber,
+              //     ),
+              //   ),
+              // ),
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: CircleAvatar(
                   backgroundColor: Colors.white,
                   child: IconButton(
-                    icon:
-                        Icon(Icons.call, color: Color(0xFF51011A)), // Call icon
-                    onPressed: () {
-                      // Action for the button
-                    },
+                    icon: Icon(
+                      Icons.call,
+                      color: _isCallEnabled
+                          ? Color(0xFF51011A)
+                          : Colors.grey, // Show gray when disabled
+                    ),
+                    onPressed: _isCallEnabled
+                        ? () {
+                            _makePhoneCall(_phoneNumber); // Use fetched phone number
+                          }
+                        : () {
+                            // Show snackbar when the button is disabled
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('User is not available. Call after some time.'),
+                              ),
+                            );
+                          },
                   ),
                 ),
               ),
@@ -131,7 +193,6 @@ class _ChatState extends State<Chat> {
       ),
       body: Column(
         children: <Widget>[
-          // Display the messages in a ListView
           Expanded(
             child: ListView.builder(
               reverse: true, // New messages appear at the bottom
@@ -173,12 +234,6 @@ class _ChatState extends State<Chat> {
               },
             ),
           ),
-
-          // Input field and Send button at the bottom
-          // Input field and Send button at the bottom
-          // Input field and Send button at the bottom
-          // Input field and Send button at the bottom
-          // Input field and Send button at the bottom
           Padding(
             padding: const EdgeInsets.all(0),
             child: Container(
@@ -196,37 +251,30 @@ class _ChatState extends State<Chat> {
                           bottom: 8,
                           left: 10), // Add top and bottom margin
                       decoration: BoxDecoration(
-                        color:
-                            Colors.white, // Maroon background for the text box
-                        borderRadius:
-                            BorderRadius.circular(8.0), // Rounded corners
+                        color: Colors.white, // Maroon background for the text box
+                        borderRadius: BorderRadius.circular(8.0), // Rounded corners
                       ),
                       child: TextField(
                         controller: _controller,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white, // Maroon background for the text box
+                          fillColor: Colors.white,
                           border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(8.0), // Rounded corners
-                            borderSide: BorderSide.none, // Remove border line
+                            borderRadius: BorderRadius.circular(8.0), // Rounded corners
+                            borderSide: BorderSide.none,
                           ),
                           hintText: 'Enter message',
-                          hintStyle:
-                              TextStyle(color: Colors.black), // White hint text
                           contentPadding: EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 10), // Add horizontal padding
                         ),
-                        style:
-                            TextStyle(color: Colors.black), // White text color
+                        style: TextStyle(color: Colors.black),
                       ),
                     ),
                   ),
                   SizedBox(width: 10),
                   IconButton(
-                    icon:
-                        Icon(Icons.send, color: Color(0xFFFFFFFF)), // Send icon
+                    icon: Icon(Icons.send, color: Colors.white), // Send icon
                     onPressed: () {
                       _sendMessage(_controller.text);
                     },
