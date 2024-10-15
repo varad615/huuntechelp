@@ -26,11 +26,9 @@ class _HomePageState extends State<HomePage> {
     _currentUser = _auth.currentUser;
 
     if (_currentUser != null) {
-      DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(_currentUser!.uid)
-          .get();
-      
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(_currentUser!.uid).get();
+
       if (userDoc.exists) {
         setState(() {
           _userName = userDoc['name'];
@@ -57,7 +55,10 @@ class _HomePageState extends State<HomePage> {
                   ? CircularProgressIndicator()
                   : RichText(
                       text: TextSpan(
-                        style: TextStyle(fontSize: 36, color: Colors.black), // Refined size for modern look
+                        style: TextStyle(
+                            fontSize: 36,
+                            color:
+                                Colors.black), // Refined size for modern look
                         children: [
                           TextSpan(
                             text: 'Welcome\n', // No comma, name in next line
@@ -77,16 +78,16 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-              
+
               SizedBox(height: 20), // Balanced space
-        
+
               // Grid of 2x2 cards
               Expanded(
                 child: GridView(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 15.0, // Subtle space between cards
-                    mainAxisSpacing: 15.0,  // Subtle space between cards
+                    mainAxisSpacing: 15.0, // Subtle space between cards
                   ),
                   children: [
                     // Box 1: Chat
@@ -102,7 +103,8 @@ class _HomePageState extends State<HomePage> {
                         label: 'Chat',
                         bgColor: Colors.white, // Clean background
                         iconColor: Color(0xFF51011A), // Maroon for icons
-                        shadowColor: Colors.grey.shade300, // Subtle shadow for depth
+                        shadowColor:
+                            Colors.grey.shade300, // Subtle shadow for depth
                       ),
                     ),
                     // Box 2: YouTube
@@ -110,7 +112,8 @@ class _HomePageState extends State<HomePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => ProfileScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => YouTubePage()),
                         );
                       },
                       child: _buildCard(
@@ -122,12 +125,20 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     // Box 3: Account
-                    _buildCard(
-                      icon: Icons.account_circle,
-                      label: 'Account',
-                      bgColor: Colors.white,
-                      iconColor: Color(0xFF51011A),
-                      shadowColor: Colors.grey.shade300,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ProfileScreen()));
+                      },
+                      child: _buildCard(
+                        icon: Icons.account_circle,
+                        label: 'Account',
+                        bgColor: Colors.white,
+                        iconColor: Color(0xFF51011A),
+                        shadowColor: Colors.grey.shade300,
+                      ),
                     ),
                     // Box 4: Call
                     _buildCard(

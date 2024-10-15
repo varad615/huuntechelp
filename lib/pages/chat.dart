@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
@@ -17,40 +19,47 @@ class Chat extends StatefulWidget {
 
 class _ChatState extends State<Chat> {
   final _database = FirebaseDatabase.instance.ref();
+  final _firestore = FirebaseFirestore.instance;
   final _controller = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String _userId = '';
+  String _username = ''; // To store fetched username
   List<Map<String, dynamic>> _messages = [];
   bool _isCallEnabled = false; // Initially disabled
   String _phoneNumber = '';
 
   // Send the message with 'type: user'
-  void _sendMessage(String text) {
+  void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
-    final messageId =
-        _database.child('chat').child('messages').child(_userId).push().key;
+    final messageId = _database.child('chats').child('messages').child(_userId).child(_username).push().key;
 
-    _database
-        .child('chat')
-        .child('messages')
-        .child(_userId)
-        .child(messageId!)
-        .set({
-      'text': text,
-      'time': DateTime.now().millisecondsSinceEpoch,
-      'type': 'user',
-    });
+    if (messageId != null) {
+      // Add message under user's chat node with username
+      await _database
+          .child('chats')
+          .child('messages')
+          .child(_userId)
+          .child(_username) // Store messages under the username
+          .child(messageId)
+          .set({
+        'text': text,
+        'time': DateTime.now().millisecondsSinceEpoch,
+        'type': 'user',
+        'seen': false, // Add seen status
+      });
 
-    _controller.clear();
+      _controller.clear();
+    }
   }
 
   // Retrieve messages and listen for changes
   void _retrieveMessages() {
     _database
-        .child('chat')
+        .child('chats')
         .child('messages')
         .child(_userId)
+        .child(_username) // Listen under the username
         .onValue
         .listen((event) {
       final data = event.snapshot.value as Map<dynamic, dynamic>?;
@@ -64,6 +73,7 @@ class _ChatState extends State<Chat> {
             'text': messageData['text'],
             'time': messageData['time'],
             'type': messageData['type'],
+            'seen': messageData['seen'],
           });
         });
 
@@ -73,6 +83,9 @@ class _ChatState extends State<Chat> {
         setState(() {
           _messages = loadedMessages;
         });
+
+        // Mark messages as seen
+        _markMessagesAsSeen();
       }
     });
   }
@@ -91,6 +104,45 @@ class _ChatState extends State<Chat> {
     });
   }
 
+  // Fetch user's username from Firestore
+  Future<void> _fetchUsername() async {
+    final userDoc = await _firestore.collection('users').doc(_userId).get();
+    if (userDoc.exists) {
+      final userData = userDoc.data() as Map<String, dynamic>;
+      _username = userData['name'] ?? 'Unknown User';
+
+      // Store username in Firebase Realtime Database if not already stored
+      await _database
+          .child('chats')
+          .child('messages')
+          .child(_userId)
+          .child(_username); // Store under username only once
+    }
+  }
+
+  // Mark messages as seen when displayed
+  void _markMessagesAsSeen() {
+    _messages.forEach((message) {
+      if (!message['seen']) {
+        final messageRef = _database
+            .child('chats')
+            .child('messages')
+            .child(_userId)
+            .child(_username)
+            .orderByChild('seen')
+            .equalTo(false)
+            .once()
+            .then((snapshot) {
+              final updates = Map<String, dynamic>();
+              snapshot.snapshot.children.forEach((child) {
+                updates['${child.key}/seen'] = true;
+              });
+              _database.child('chats/messages/$_userId/$_username').update(updates);
+            });
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -99,15 +151,31 @@ class _ChatState extends State<Chat> {
       setState(() {
         _userId = user.uid;
       });
+
+      // Fetch the username if it's the first time starting the chat
+      _database.child('chats/messages').child(_userId).once()
+          .then((DatabaseEvent snapshot) {
+        if (snapshot.snapshot.value == null) {
+          // If no username found, fetch it from Firestore
+          _fetchUsername();
+        } else {
+          // If username exists, retrieve and set it
+          setState(() {
+            final data = snapshot.snapshot.value as Map<dynamic, dynamic>;
+            _username = data.keys.first; // Assuming only one username per user
+          });
+        }
+      });
+
       _retrieveMessages();
       _fetchPhoneDetails(); // Fetch phone details when the widget initializes
     }
   }
 
-  // Format the timestamp to display time in hh:mm format
+  // Format the timestamp to display date and time
   String _formatTimestamp(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    return "${date.hour}:${date.minute}";
+    return DateFormat('dd/MM/yyyy, hh:mm a').format(date);
   }
 
   // Make a phone call
@@ -146,21 +214,11 @@ class _ChatState extends State<Chat> {
           child: AppBar(
             backgroundColor: Color(0xFF51011A), // Maroon color
             title: Text(
-              'Chat',
+              'Chat with $_username', // Show username in AppBar
               style: TextStyle(color: Colors.white), // White text color
             ),
             iconTheme: IconThemeData(color: Colors.white), // White back button
             actions: [
-              // Padding(
-              //   padding: const EdgeInsets.only(right: 16.0),
-              //   child: CircleAvatar(
-              //     backgroundColor: Colors.white,
-              //     child: IconButton(
-              //       icon: Icon(Icons.call, color: Color(0xFF51011A)), // Call icon
-              //       onPressed: createTemporaryNumber,
-              //     ),
-              //   ),
-              // ),
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: CircleAvatar(
@@ -209,8 +267,7 @@ class _ChatState extends State<Chat> {
                     margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color:
-                          isUserMessage ? Colors.green[300] : Colors.grey[300],
+                      color: isUserMessage ? Colors.green[300] : Colors.grey[300],
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
@@ -235,55 +292,31 @@ class _ChatState extends State<Chat> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Color(0xFF51011A), // Background color for the entire row
-                borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(8.0)), // Rounded top corners
-              ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(
-                          top: 10,
-                          bottom: 8,
-                          left: 10), // Add top and bottom margin
-                      decoration: BoxDecoration(
-                        color: Colors.white, // Maroon background for the text box
-                        borderRadius: BorderRadius.circular(8.0), // Rounded corners
-                      ),
-                      child: TextField(
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0), // Rounded corners
-                            borderSide: BorderSide.none,
-                          ),
-                          hintText: 'Enter message',
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 10), // Add horizontal padding
-                        ),
-                        style: TextStyle(color: Colors.black),
-                      ),
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Enter message',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  SizedBox(width: 10),
-                  IconButton(
-                    icon: Icon(Icons.send, color: Colors.white), // Send icon
-                    onPressed: () {
-                      _sendMessage(_controller.text);
-                    },
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send),
+                  onPressed: () => _sendMessage(_controller.text),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: createTemporaryNumber, // Create temporary phone number
+        child: Icon(Icons.phone),
+        backgroundColor: Color(0xFF51011A),
       ),
     );
   }
