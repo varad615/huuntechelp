@@ -1,323 +1,343 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
-import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // For date formatting
+import 'package:url_launcher/url_launcher.dart'; // Import the url_launcher package
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(Chat());
-}
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
 
-class Chat extends StatefulWidget {
   @override
-  _ChatState createState() => _ChatState();
+  _ChatPageState createState() => _ChatPageState();
 }
 
-class _ChatState extends State<Chat> {
-  final _database = FirebaseDatabase.instance.ref();
-  final _firestore = FirebaseFirestore.instance;
-  final _controller = TextEditingController();
+class _ChatPageState extends State<ChatPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  String _userId = '';
-  String _username = ''; // To store fetched username
-  List<Map<String, dynamic>> _messages = [];
-  bool _isCallEnabled = false; // Initially disabled
-  String _phoneNumber = '';
+  final DatabaseReference _dbRef =
+      FirebaseDatabase.instance.ref('chats/messages');
+  final DatabaseReference _phoneRef =
+      FirebaseDatabase.instance.ref('setting'); // Reference for phone details
+  final TextEditingController _messageController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Send the message with 'type: user'
-  void _sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
-
-    final messageId = _database.child('chats').child('messages').child(_userId).child(_username).push().key;
-
-    if (messageId != null) {
-      // Add message under user's chat node with username
-      await _database
-          .child('chats')
-          .child('messages')
-          .child(_userId)
-          .child(_username) // Store messages under the username
-          .child(messageId)
-          .set({
-        'text': text,
-        'time': DateTime.now().millisecondsSinceEpoch,
-        'type': 'user',
-        'seen': false, // Add seen status
-      });
-
-      _controller.clear();
-    }
-  }
-
-  // Retrieve messages and listen for changes
-  void _retrieveMessages() {
-    _database
-        .child('chats')
-        .child('messages')
-        .child(_userId)
-        .child(_username) // Listen under the username
-        .onValue
-        .listen((event) {
-      final data = event.snapshot.value as Map<dynamic, dynamic>?;
-
-      if (data != null) {
-        final List<Map<String, dynamic>> loadedMessages = [];
-
-        data.forEach((key, value) {
-          final messageData = value as Map<dynamic, dynamic>;
-          loadedMessages.add({
-            'text': messageData['text'],
-            'time': messageData['time'],
-            'type': messageData['type'],
-            'seen': messageData['seen'],
-          });
-        });
-
-        // Sort the messages by timestamp (ascending order)
-        loadedMessages.sort((a, b) => b['time'].compareTo(a['time']));
-
-        setState(() {
-          _messages = loadedMessages;
-        });
-
-        // Mark messages as seen
-        _markMessagesAsSeen();
-      }
-    });
-  }
-
-  // Fetch phone number and availability from Firebase
-  void _fetchPhoneDetails() {
-    _database.child('phoneDetails').onValue.listen((event) {
-      final data = event.snapshot.value as Map<dynamic, dynamic>?;
-
-      if (data != null) {
-        setState(() {
-          _phoneNumber = data['phoneNumber'] ?? '';
-          _isCallEnabled = data['available'] ?? false;
-        });
-      }
-    });
-  }
-
-  // Fetch user's username from Firestore
-  Future<void> _fetchUsername() async {
-    final userDoc = await _firestore.collection('users').doc(_userId).get();
-    if (userDoc.exists) {
-      final userData = userDoc.data() as Map<String, dynamic>;
-      _username = userData['name'] ?? 'Unknown User';
-
-      // Store username in Firebase Realtime Database if not already stored
-      await _database
-          .child('chats')
-          .child('messages')
-          .child(_userId)
-          .child(_username); // Store under username only once
-    }
-  }
-
-  // Mark messages as seen when displayed
-  void _markMessagesAsSeen() {
-    _messages.forEach((message) {
-      if (!message['seen']) {
-        final messageRef = _database
-            .child('chats')
-            .child('messages')
-            .child(_userId)
-            .child(_username)
-            .orderByChild('seen')
-            .equalTo(false)
-            .once()
-            .then((snapshot) {
-              final updates = Map<String, dynamic>();
-              snapshot.snapshot.children.forEach((child) {
-                updates['${child.key}/seen'] = true;
-              });
-              _database.child('chats/messages/$_userId/$_username').update(updates);
-            });
-      }
-    });
-  }
+  late String _uid;
+  String _username = ''; // Initialize with default value
+  String _userType = ''; // Initialize with default value
+  String _phoneNumber = ''; // Initialize phone number
+  bool _isLoading = true; // Loading state
+  bool _isButtonEnabled = false; // Button state
+  final ScrollController _scrollController =
+      ScrollController(); // Scroll controller for the ListView
 
   @override
   void initState() {
     super.initState();
-    User? user = _auth.currentUser;
-    if (user != null) {
+    _uid = _auth.currentUser?.uid ?? '';
+    _fetchUserInfo(); // Fetch user info once during initialization
+    _fetchPhoneDetails(); // Fetch phone number and button state
+  }
+
+  // Fetch username and userType from Firestore
+  Future<void> _fetchUserInfo() async {
+    if (_uid.isNotEmpty) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(_uid).get();
+      if (userDoc.exists) {
+        setState(() {
+          _username = userDoc['name'];
+          _userType = userDoc['userType']; // Fetch userType from Firestore
+          _isLoading = false; // Set loading to false after fetching user info
+        });
+      } else {
+        print("User document does not exist.");
+        setState(() {
+          _isLoading =
+              false; // Set loading to false even if user does not exist
+        });
+      }
+    }
+  }
+
+  // Fetch phone number and button state from the database
+  Future<void> _fetchPhoneDetails() async {
+    DatabaseEvent event = await _phoneRef.once(); // Fetch once to get the data
+
+    if (event.snapshot.exists) {
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
+
       setState(() {
-        _userId = user.uid;
+        _phoneNumber = data['phoneNumber']; // Fetch phone number
+        _isButtonEnabled = data['available']; // Fetch button state
       });
-
-      // Fetch the username if it's the first time starting the chat
-      _database.child('chats/messages').child(_userId).once()
-          .then((DatabaseEvent snapshot) {
-        if (snapshot.snapshot.value == null) {
-          // If no username found, fetch it from Firestore
-          _fetchUsername();
-        } else {
-          // If username exists, retrieve and set it
-          setState(() {
-            final data = snapshot.snapshot.value as Map<dynamic, dynamic>;
-            _username = data.keys.first; // Assuming only one username per user
-          });
-        }
-      });
-
-      _retrieveMessages();
-      _fetchPhoneDetails(); // Fetch phone details when the widget initializes
-    }
-  }
-
-  // Format the timestamp to display date and time
-  String _formatTimestamp(int timestamp) {
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    return DateFormat('dd/MM/yyyy, hh:mm a').format(date);
-  }
-
-  // Make a phone call
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
     } else {
-      throw 'Could not launch $phoneNumber';
+      print("Phone details not found.");
     }
   }
 
-  void createTemporaryNumber() {
-    _database.child('phoneDetails').set({
-      'phoneNumber': '8691937999',
-      'available': true,
-    }).then((_) {
+  // Function to send a message
+  Future<void> _sendMessage() async {
+    if (_messageController.text.isNotEmpty) {
+      // Check if the username and userType are set, and create if necessary
+      await _checkAndSetUserDetails();
+
+      String messageId = DateTime.now()
+          .millisecondsSinceEpoch
+          .toString(); // Unique ID for the message
+      String timestamp =
+          DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+
+      // Create message data
+      Map<String, dynamic> messageData = {
+        'text': _messageController.text.trim(),
+        'sendOn': timestamp,
+        'status': 'unseen',
+        'userType': _userType,
+      };
+
+      // Store message in the database
+      await _dbRef
+          .child(_uid)
+          .child('messages')
+          .child(messageId)
+          .set(messageData);
+
+      // Clear the message input field
+      _messageController.clear();
+
+      // Scroll to the bottom of the list
+      _scrollToBottom();
+    }
+  }
+
+  // Check if username and userType are already set, and set them if not
+  Future<void> _checkAndSetUserDetails() async {
+    // Check if the user details already exist in the database
+    DatabaseEvent event =
+        await _dbRef.child(_uid).once(); // Fetch once to get the data
+
+    if (!event.snapshot.exists) {
+      // Only set username and userType if they don't exist
+      await _dbRef.child(_uid).child('username').set(_username);
+      await _dbRef.child(_uid).child('userType').set(_userType);
+    }
+  }
+
+  // Function to retrieve messages
+  Stream<DatabaseEvent> _getMessages() {
+    return _dbRef.child(_uid).child('messages').onValue;
+  }
+
+  // Function to make a phone call
+  void _makeCall() async {
+    if (_isButtonEnabled) {
+      final Uri url = Uri(scheme: 'tel', path: _phoneNumber);
+
+      if (await canLaunch(url.toString())) {
+        await launch(url.toString());
+      } else {
+        print('Could not launch $url');
+      }
+    } else {
+      // Show Snackbar if button is disabled
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Temporary number created with availability')),
+        const SnackBar(
+          content: Text('User is offline. Will be available soon.'),
+          backgroundColor: Colors.red,
+        ),
       );
-    });
+    }
+  }
+
+  // Scroll to the bottom of the list
+  void _scrollToBottom() {
+    // Check if the controller has any listeners and scroll to the end
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60.0), // Custom height
+        preferredSize: const Size.fromHeight(60.0),
         child: ClipRRect(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(8.0), // Rounded corners
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(8.0),
+            bottomRight: Radius.circular(8.0),
           ),
           child: AppBar(
-            backgroundColor: Color(0xFF51011A), // Maroon color
-            title: Text(
-              'Chat with $_username', // Show username in AppBar
-              style: TextStyle(color: Colors.white), // White text color
+            backgroundColor: const Color(0xFF51011A), // Set the AppBar color
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back,
+                  color: Colors.white), // White back arrow
+              onPressed: () => Navigator.pop(context), // Go back on press
             ),
-            iconTheme: IconThemeData(color: Colors.white), // White back button
+            title: const Text(
+              'Chat',
+              style: TextStyle(color: Colors.white), // Set text color to white
+            ),
             actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.call,
-                      color: _isCallEnabled
-                          ? Color(0xFF51011A)
-                          : Colors.grey, // Show gray when disabled
-                    ),
-                    onPressed: _isCallEnabled
-                        ? () {
-                            _makePhoneCall(_phoneNumber); // Use fetched phone number
-                          }
-                        : () {
-                            // Show snackbar when the button is disabled
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('User is not available. Call after some time.'),
-                              ),
-                            );
-                          },
+              Container(
+                margin: const EdgeInsets.all(8.0),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white, // Background color for the button
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.call,
+                    color: _isButtonEnabled
+                        ? Colors.black
+                        : Colors
+                            .grey, // Change icon color based on button state
                   ),
+                  onPressed: _makeCall, // Call function when pressed
                 ),
               ),
             ],
           ),
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: ListView.builder(
-              reverse: true, // New messages appear at the bottom
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                bool isUserMessage = message['type'] == 'user';
+      body: _isLoading // Show loader if loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: StreamBuilder<DatabaseEvent>(
+                    stream: _getMessages(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Center(
+                            child: Text('Error fetching messages'));
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                return Align(
-                  alignment: isUserMessage
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isUserMessage ? Colors.green[300] : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: isUserMessage
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
+                      final messages = snapshot.data?.snapshot.value
+                              as Map<dynamic, dynamic>? ??
+                          {};
+                      List<Map<String, dynamic>> messageList = [];
+
+                      // Prepare a list of messages with keys for sorting
+                      messages.forEach((messageId, messageData) {
+                        messageList.add({
+                          'id': messageId,
+                          'text': messageData['text'],
+                          'sendOn': messageData['sendOn'],
+                          'status': messageData['status'],
+                          'userType': messageData['userType'],
+                        });
+
+                        if (messageData['userType'] == 'admin' &&
+                            messageData['status'] == 'unseen') {
+                          _dbRef
+                              .child(_uid)
+                              .child('messages')
+                              .child(messageId)
+                              .update({'status': 'seen'});
+                        }
+                      });
+
+                      // Sort messages by sendOn timestamp
+                      messageList.sort((a, b) => DateTime.parse(a['sendOn'])
+                          .compareTo(DateTime.parse(b['sendOn'])));
+
+                      List<Widget> messageWidgets =
+                          messageList.map((messageData) {
+                        bool isMe = messageData['userType'] ==
+                            _userType; // Determine if the message is from the user
+
+                        return Align(
+                          alignment: isMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft, // Align based on userType
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 5, horizontal: 10),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isMe
+                                  ? const Color(0xFF3045D3)
+                                  : Colors.grey[
+                                      300], // Background color based on sender
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: isMe
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  messageData['text'],
+                                  style: TextStyle(
+                                      color:
+                                          isMe ? Colors.white : Colors.black),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  messageData['sendOn'],
+                                  style: TextStyle(
+                                      color: isMe
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                      fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList();
+
+                      // Scroll to the bottom whenever messages are updated
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _scrollToBottom();
+                      });
+
+                      return ListView(
+                        controller:
+                            _scrollController, // Attach the scroll controller
+                        children: messageWidgets,
+                      );
+                    },
+                  ),
+                ),
+                Container(
+                  color: const Color(
+                      0xFF51011A), // Background color for input area
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
                       children: [
-                        Text(
-                          message['text'],
-                          style: TextStyle(color: Colors.black),
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: TextField(
+                              controller: _messageController,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Type a message...',
+                                hintStyle: TextStyle(color: Colors.white54),
+                              ),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
                         ),
-                        SizedBox(height: 5),
-                        Text(
-                          _formatTimestamp(message['time']),
-                          style: TextStyle(color: Colors.black54, fontSize: 10),
+                        IconButton(
+                          icon: const Icon(Icons.send,
+                              color:
+                                  Colors.white), // Change icon color to white
+                          onPressed: _sendMessage,
                         ),
                       ],
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Enter message',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: () => _sendMessage(_controller.text),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: createTemporaryNumber, // Create temporary phone number
-        child: Icon(Icons.phone),
-        backgroundColor: Color(0xFF51011A),
-      ),
     );
   }
 }

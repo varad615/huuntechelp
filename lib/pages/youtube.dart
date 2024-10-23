@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:hunttechelp/pages/player.dart';
 
 class YouTubePage extends StatefulWidget {
+  const YouTubePage({super.key});
+
   @override
   _YouTubePageState createState() => _YouTubePageState();
 }
 
 class _YouTubePageState extends State<YouTubePage> {
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   List _videos = [];
   List _filteredVideos = [];
-  String _apiKey = 'AIzaSyCN47LtDXNy5pLIbNcarZqOgF3xtzN2L4w';
-  String _channelId = 'UC8zteQuBHOUz4Ej1iomSgeQ';
+  final String _apiKey = 'AIzaSyCN47LtDXNy5pLIbNcarZqOgF3xtzN2L4w';
+  final String _channelId = 'UC8zteQuBHOUz4Ej1iomSgeQ';
 
   @override
   void initState() {
@@ -52,11 +53,11 @@ class _YouTubePageState extends State<YouTubePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: Text(
+        title: const Text(
           'Video Tutorials',
           style: TextStyle(color: Colors.black),
         ),
-        iconTheme: IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Column(
         children: [
@@ -68,7 +69,7 @@ class _YouTubePageState extends State<YouTubePage> {
                 filled: true,
                 fillColor: Colors.grey[200],
                 hintText: 'Search',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
@@ -119,10 +120,10 @@ class _YouTubePageState extends State<YouTubePage> {
                               bottom: 8,
                               right: 8,
                               child: Container(
-                                padding: EdgeInsets.symmetric(
+                                padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 color: Colors.black.withOpacity(0.8),
-                                child: Text(
+                                child: const Text(
                                   '10:15', // Static duration for now
                                   style: TextStyle(
                                     color: Colors.white,
@@ -133,23 +134,24 @@ class _YouTubePageState extends State<YouTubePage> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text(
                             videoTitle,
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text(
                             channelTitle,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
                           ),
                         ),
                       ],

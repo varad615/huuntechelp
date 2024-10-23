@@ -7,7 +7,8 @@ class VideoPlayerPage extends StatefulWidget {
   final String videoId;
   final String videoTitle;
 
-  VideoPlayerPage({required this.videoId, required this.videoTitle});
+  const VideoPlayerPage(
+      {super.key, required this.videoId, required this.videoTitle});
 
   @override
   _VideoPlayerPageState createState() => _VideoPlayerPageState();
@@ -24,7 +25,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     super.initState();
     _controller = YoutubePlayerController(
       initialVideoId: widget.videoId,
-      flags: YoutubePlayerFlags(
+      flags: const YoutubePlayerFlags(
         autoPlay: true,
         mute: false,
       ),
@@ -43,7 +44,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       setState(() {
         _description = data['items'][0]['snippet']['description'] ?? '';
         _channelTitle = data['items'][0]['snippet']['channelTitle'] ?? '';
-        _thumbnailUrl = data['items'][0]['snippet']['thumbnails']['high']['url'] ?? '';
+        _thumbnailUrl =
+            data['items'][0]['snippet']['thumbnails']['high']['url'] ?? '';
       });
     } else {
       // Handle error
@@ -86,13 +88,13 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 // Video title
                 Text(
                   widget.videoTitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 // Channel title
                 Text(
                   _channelTitle,
@@ -101,7 +103,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                     color: Colors.grey[600],
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 // Video description
                 Text(
                   _description,
@@ -114,48 +116,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
             ),
           ),
           // Divider
-          Divider(),
-          // Action buttons
-          // Padding(
-          //   padding: const EdgeInsets.all(16.0),
-          //   child: Row(
-          //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //     children: [
-          //       // Like button
-          //       Row(
-          //         children: [
-          //           Icon(Icons.thumb_up, color: Colors.grey),
-          //           SizedBox(width: 8),
-          //           Text("Like", style: TextStyle(color: Colors.grey)),
-          //         ],
-          //       ),
-          //       // Dislike button
-          //       Row(
-          //         children: [
-          //           Icon(Icons.thumb_down, color: Colors.grey),
-          //           SizedBox(width: 8),
-          //           Text("Dislike", style: TextStyle(color: Colors.grey)),
-          //         ],
-          //       ),
-          //       // Share button
-          //       Row(
-          //         children: [
-          //           Icon(Icons.share, color: Colors.grey),
-          //           SizedBox(width: 8),
-          //           Text("Share", style: TextStyle(color: Colors.grey)),
-          //         ],
-          //       ),
-          //       // More options
-          //       Row(
-          //         children: [
-          //           Icon(Icons.more_horiz, color: Colors.grey),
-          //         ],
-          //       ),
-          //     ],
-          //   ),
-          // ),
-          // Divider(),
-          // Add more details or comments section here if needed
+          const Divider(),
         ],
       ),
     );

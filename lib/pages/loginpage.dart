@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hunttechelp/pages/home.dart';
 import 'package:hunttechelp/pages/registerpage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -15,33 +18,49 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true; // To control password visibility
+  bool _obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Login'),
-      ),
       body: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Image.asset(
+                  'assets/logo.png',
+                  height: 150,
+                ),
+                const SizedBox(height: 30),
+                const Text(
+                  'Login',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF51011A),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                // Email text field
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
+                    filled: true,
+                    fillColor: Colors.grey[200],
                     border: OutlineInputBorder(
-                      borderSide:
-                      BorderSide(color: Color(0xFF3045D3)), // Border color
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                          color: Color(0xFF3045D3)), // Focused border color
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF51011A),
+                      ),
                     ),
                   ),
                   validator: (value) {
@@ -51,21 +70,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
+                // Password text field
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: _obscurePassword, // Toggles password visibility
+                  obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    hintText: 'Enter your password',
+                    filled: true,
+                    fillColor: Colors.grey[200],
                     border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF3045D3)), // Border color
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF3045D3)), // Focused border color
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF51011A),
+                      ),
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        _obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: const Color(0xFF51011A),
                       ),
                       onPressed: () {
                         setState(() {
@@ -81,50 +110,83 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
+                // Login button
                 SizedBox(
-                  width: double.infinity, // Make the button take the full width
+                  width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         try {
-                          await _auth.signInWithEmailAndPassword(
+                          UserCredential userCredential =
+                              await _auth.signInWithEmailAndPassword(
                             email: _emailController.text.trim(),
                             password: _passwordController.text.trim(),
                           );
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => HomePage()),
-                          );
+
+                          User? user = userCredential.user;
+
+                          if (user != null) {
+                            String uid = user.uid;
+
+                            DocumentSnapshot userDoc = await FirebaseFirestore
+                                .instance
+                                .collection('users')
+                                .doc(uid)
+                                .get();
+
+                            if (userDoc.exists &&
+                                userDoc['userType'] == 'User') {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => HomePage()),
+                              );
+                            } else {
+                              await _auth.signOut();
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Unauthorized login attempt. Only "User" can log in.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         } on FirebaseAuthException catch (e) {
                           String message = e.message ??
-                              'An error occurred, please check your credentials!';
+                              'An error occurred. Please check your credentials!';
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(message),
-                              backgroundColor:
-                              Theme.of(context).colorScheme.error,
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'An unexpected error occurred. Please try again.'),
+                              backgroundColor: Colors.red,
                             ),
                           );
                         }
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF3045D3), // Button background color
+                      backgroundColor: const Color(0xFF51011A),
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                        BorderRadius.circular(12), // Border radius
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 0, // Remove shadow
-                      shadowColor: Colors.transparent, // No shadow color
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
+                    child: const Padding(
+                      padding: EdgeInsets.all(20.0),
                       child: Text(
                         'Login',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15), // Button text color
+                        style: TextStyle(color: Colors.white, fontSize: 15),
                       ),
                     ),
                   ),
@@ -135,8 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => RegisterPage()),
+                        MaterialPageRoute(builder: (context) => RegisterPage()),
                       );
                     },
                     child: const Text('Don\'t have an account? Register'),
