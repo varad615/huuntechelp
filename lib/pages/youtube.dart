@@ -14,8 +14,8 @@ class _YouTubePageState extends State<YouTubePage> {
   final TextEditingController _searchController = TextEditingController();
   List _videos = [];
   List _filteredVideos = [];
-  final String _apiKey = 'AIzaSyCN47LtDXNy5pLIbNcarZqOgF3xtzN2L4w';
-  final String _channelId = 'UC8zteQuBHOUz4Ej1iomSgeQ';
+  final String _apiKey = 'AIzaSyAjCLRtoyb-DXSDduFnEYfKygQOSyvHlDo';
+  final String _channelId = 'UCyi9lNn1XWLsK0Wcs983Hww';
 
   @override
   void initState() {

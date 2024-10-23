@@ -34,7 +34,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   Future<void> fetchVideoDetails(String videoId) async {
-    String apiKey = 'AIzaSyCN47LtDXNy5pLIbNcarZqOgF3xtzN2L4w'; // Your API key
+    String apiKey = 'AIzaSyAjCLRtoyb-DXSDduFnEYfKygQOSyvHlDo'; // Your API key
     String url =
         'https://www.googleapis.com/youtube/v3/videos?id=$videoId&part=snippet&key=$apiKey';
 

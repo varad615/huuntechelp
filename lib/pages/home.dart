@@ -28,7 +28,7 @@ class _HomePageState extends State<HomePage> {
   String? _userName;
   Map<String, dynamic>? _videoData; // To store video details
   final String _apiKey =
-      'AIzaSyCN47LtDXNy5pLIbNcarZqOgF3xtzN2L4w'; // Your API Key
+      'AIzaSyAjCLRtoyb-DXSDduFnEYfKygQOSyvHlDo'; // Your API Key
   String _videoId = ''; // To store fetched video ID from Firebase
   int _unseenAdminMessagesCount = 0; // To store unseen admin messages count
   String? _currentUserId; // To store current user ID
