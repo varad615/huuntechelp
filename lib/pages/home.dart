@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For setting the status bar color
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:googleapis/photoslibrary/v1.dart';
 import 'package:hunttechelp/pages/chat.dart';
 import 'package:hunttechelp/pages/player.dart';
 import 'package:hunttechelp/pages/profile.dart';

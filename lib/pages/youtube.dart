@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:hunttechelp/pages/player.dart';
+import 'package:hunttechelp/pages/history.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class YouTubePage extends StatefulWidget {
   const YouTubePage({super.key});
@@ -33,9 +35,32 @@ class _YouTubePageState extends State<YouTubePage> {
       var data = json.decode(response.body);
       setState(() {
         _videos = data['items'];
-        _filteredVideos = _videos; // Initialize with all videos
+        _filteredVideos = _videos;
       });
     }
+  }
+
+  Future<void> _storeVideoInHistory(
+      String videoId, String title, String description) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String timestamp = DateTime.now().toIso8601String();
+
+    Map<String, dynamic> videoEntry = {
+      'id': videoId,
+      'title': title,
+      'description': description,
+      'timestamp': timestamp,
+    };
+
+    // Debugging message
+    print("Storing video with ID: $videoId to history");
+
+    List<String> history = prefs.getStringList('videoHistory') ?? [];
+    history.add(jsonEncode(videoEntry));
+    await prefs.setStringList('videoHistory', history);
+
+    // Confirm storage
+    print("Video stored: ${jsonEncode(videoEntry)}");
   }
 
   void _filterVideos() {
@@ -58,6 +83,18 @@ class _YouTubePageState extends State<YouTubePage> {
           style: TextStyle(color: Colors.black),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.history),
+            color: Colors.black,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => HistoryPage()),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -84,15 +121,26 @@ class _YouTubePageState extends State<YouTubePage> {
                 var video = _filteredVideos[index];
                 var videoId = video['id']['videoId'];
                 var videoTitle = video['snippet']['title'];
+                var videoDescription = video['snippet']['description'];
                 var thumbnailUrl =
                     video['snippet']['thumbnails']['high']['url'];
-                var channelTitle = video['snippet']['channelTitle'];
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0), // Added padding
+                      horizontal: 16.0, vertical: 8.0),
                   child: InkWell(
-                    onTap: () {
+                    onTap: () async {
+                      // Debugging message
+                      print("Tapped on video with ID: $videoId");
+
+                      // Save video data to history only if not accessed from history
+                      await _storeVideoInHistory(
+                          videoId, videoTitle, videoDescription);
+
+                      // Debugging message
+                      print(
+                          "Navigating to VideoPlayerPage for video ID: $videoId");
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -116,22 +164,6 @@ class _YouTubePageState extends State<YouTubePage> {
                                 fit: BoxFit.cover,
                               ),
                             ),
-                            Positioned(
-                              bottom: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                color: Colors.black.withOpacity(0.8),
-                                child: const Text(
-                                  '10:15', // Static duration for now
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -149,7 +181,7 @@ class _YouTubePageState extends State<YouTubePage> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Text(
-                            channelTitle,
+                            videoDescription,
                             style: const TextStyle(
                                 fontSize: 12, color: Colors.grey),
                           ),
