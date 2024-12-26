@@ -1,4 +1,4 @@
-package com.hunttechelp.app;
+package com.hunttechelp.app.tech;
 
 import io.flutter.embedding.android.FlutterActivity;
 
