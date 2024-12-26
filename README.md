@@ -1,6 +1,6 @@
-# mathsense
+# hunttechelp
 
-Maths app for disable people
+A new Flutter project.
 
 ## Getting Started
 
