@@ -27,19 +27,6 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
-
-pre_install do |installer|
-  installer.pod_targets.each do |pod|
-    if pod.name.start_with?('Firebase')
-      pod.build_configurations.each do |config|
-        config.build_settings['DEFINES_MODULE'] = 'YES'
-      end
-    end
-  end
-end
-
-
-
 target 'Runner' do
   # use_frameworks!
   use_frameworks! :linkage => :static
@@ -61,10 +48,9 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
+    # ✅ Allow non-modular includes inside framework modules
     target.build_configurations.each do |config|
-      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'  # ✅ Fix Non-Modular Includes
-      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'  # ✅ Disable User Script Sandboxing
-      config.build_settings['DEFINES_MODULE'] = 'YES'  # ✅ Define modules for all frameworks
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
     end
-  end
+   end
 end
