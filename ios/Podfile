@@ -31,9 +31,11 @@ target 'Runner' do
   # use_frameworks!
   use_frameworks! :linkage => :static
 
-    # ✅ Explicitly set modular headers for Firebase
   pod 'Firebase/Auth', :modular_headers => true
   pod 'Firebase/Core', :modular_headers => true
+  pod 'Firebase/Firestore', :modular_headers => true
+  pod 'Firebase/Database', :modular_headers => true
+  pod 'Firebase/Messaging', :modular_headers => true
   
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
