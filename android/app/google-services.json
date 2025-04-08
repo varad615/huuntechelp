@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "825499018833",
+    "firebase_url": "https://hunttechelp-default-rtdb.firebaseio.com",
+    "project_id": "hunttechelp",
+    "storage_bucket": "hunttechelp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:825499018833:android:d814cc600a94c4c289fa70",
+        "android_client_info": {
+          "package_name": "com.huntechelp.admin.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI5SEucy_pC1nmqBV7KPbNVxhpBE5aLX0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:825499018833:android:814731e0e006e44089fa70",
+        "android_client_info": {
+          "package_name": "com.hunttechelp.app.tech"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI5SEucy_pC1nmqBV7KPbNVxhpBE5aLX0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
