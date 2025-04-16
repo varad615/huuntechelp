@@ -1,45 +1,29 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:hunttechelp/pages/main_page.dart';
+import 'util.dart';
+import 'theme.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await SentryFlutter.init(
-    (options) {
-      options.dsn = 'YOUR_DSN_HERE';
-      options.debug = true;
-      options.diagnosticLevel = SentryLevel.debug;
-      options.tracesSampleRate = 1.0;
-      options.profilesSampleRate = 1.0;
-      options.sendDefaultPii = true;
-    },
-    appRunner: () => runApp(
-      SentryWidget(
-        child: const HelloWorldApp(),
-      ),
-    ),
-  );
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures that Flutter is ready before initializing Firebase
+  await Firebase.initializeApp(); // Initialize Firebase
+  runApp(MyApp());
 }
 
-class HelloWorldApp extends StatelessWidget {
-  const HelloWorldApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    TextTheme textTheme = createTextTheme(context, "ABeeZee", "ABeeZee");
+
+    MaterialTheme theme = MaterialTheme(textTheme);
+    
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Sentry Test')),
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () {
-              // Force an error to test if Sentry logs it
-              throw Exception(
-                  "👋 This is a test exception from Hello World app.");
-            },
-            child: const Text('Throw Test Error'),
-          ),
-        ),
-      ),
+      debugShowCheckedModeBanner: false,
+      title: 'Health App',
+      theme: theme.light(), // Always use the light theme
+      home: const MainPage(),
     );
   }
 }
