@@ -1,13 +1,39 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+
 import 'package:hunttechelp/pages/main_page.dart';
 import 'util.dart';
 import 'theme.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensures that Flutter is ready before initializing Firebase
-  await Firebase.initializeApp(); // Initialize Firebase
-  runApp(MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SentryFlutter.init(
+    (options) {
+      options.dsn =
+          'https://e07448e458268dad33d285f3719b57af@o4509161794961408.ingest.de.sentry.io/4509161796534352';
+      options.sendDefaultPii = true;
+      options.tracesSampleRate = 1.0;
+      options.profilesSampleRate = 1.0;
+    },
+    appRunner: () => runZonedGuarded(
+      () async {
+        await Firebase.initializeApp(); // Firebase after Sentry init
+        runApp(
+          SentryWidget(
+            child: MyApp(),
+          ),
+        );
+      },
+      (error, stackTrace) async {
+        // Capture any unhandled errors
+        await Sentry.captureException(error, stackTrace: stackTrace);
+      },
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -16,13 +42,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     TextTheme textTheme = createTextTheme(context, "ABeeZee", "ABeeZee");
-
     MaterialTheme theme = MaterialTheme(textTheme);
-    
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Health App',
-      theme: theme.light(), // Always use the light theme
+      theme: theme.light(),
       home: const MainPage(),
     );
   }
