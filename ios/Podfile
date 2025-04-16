@@ -30,13 +30,13 @@ flutter_ios_podfile_setup
 target 'Runner' do
   use_frameworks!
   # use_frameworks! :linkage => :static
-
-  pod 'Firebase/Auth', 
-  pod 'Firebase/Core', 
-  pod 'Firebase/Firestore',
-  pod 'Firebase/Database', 
-  pod 'Firebase/Messaging',
   
+  pod 'Firebase/Auth'
+  pod 'Firebase/Core'
+  pod 'Firebase/Firestore'
+  pod 'Firebase/Database'
+  pod 'Firebase/Messaging'
+
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
