@@ -1,9 +1,13 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:hunttechelp/pages/main_page.dart';
 import 'package:hunttechelp/pages/default_page.dart';
 import 'util.dart';
 import 'theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures that Flutter is ready before initializing Firebase
+  await Firebase.initializeApp(); // Initialize Firebase
   runApp(MyApp());
 }
 
@@ -15,12 +19,12 @@ class MyApp extends StatelessWidget {
     TextTheme textTheme = createTextTheme(context, "ABeeZee", "ABeeZee");
 
     MaterialTheme theme = MaterialTheme(textTheme);
-
+    
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Health App',
-      theme: theme.light(),
-      home: DefaultPage(), // This now launches directly with no Firebase
+      theme: theme.light(), // Always use the light theme
+      home: DefaultPage(), // Default page to show when the app starts
     );
   }
 }
